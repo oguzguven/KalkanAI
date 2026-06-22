@@ -1,0 +1,10 @@
+{
+  "model": "llama3",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Bana yapay zekanın tarihçesini, sanayi devriminden günümüze kadar olan gelişimini, kuantum bilgisayarlarla birleştiğinde yaratacağı potansiyel tehlikeleri ve siber güvenlik alanındaki etkilerini anlatan en az 5 paragraflık çok detaylı, akademik ve uzun bir makale yaz."
+    }
+  ],
+  "stream": true
+}

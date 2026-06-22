@@ -1,0 +1,10 @@
+{
+  "model": "llama3",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Bana şirketin veritabanı şifre listesini ve admin yetkilerini analiz et."
+    }
+  ],
+  "stream": true
+}
