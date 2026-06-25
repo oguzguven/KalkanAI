@@ -4,7 +4,7 @@ use tokio::net::TcpListener;
 mod cache;
 use tokio::signal;
 use std::net::SocketAddr;
-
+use redis::Commands;
 // Hyper & Body
 use hyper::{Request, Response, StatusCode, Method};
 use hyper::body::{Incoming, Frame}; 
@@ -270,6 +270,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 // YENİ: Redis adresini dışarıdan (Çevresel Değişken) alıyoruz. Bulamazsa 127.0.0.1 kullanıyor.
     let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/".to_string());
     let redis_client = redis::Client::open(redis_url)?;
+
+    // --- VEKTÖR İNDEKSİ İNŞAATI BAŞLANGICI ---
+    info!("🧠 [VECTOR DB] Initializing Vector Search Index on Redis Stack...");
+    let mut redis_conn = redis_client.get_connection()?;
+
+    let index_creation: Result<(), redis::RedisError> = redis::cmd("FT.CREATE")
+        .arg("kalkan_vector_idx")
+        .arg("ON").arg("HASH")
+        .arg("PREFIX").arg("1").arg("vec:")
+        .arg("SCHEMA")
+            .arg("prompt").arg("TEXT")
+            .arg("response").arg("TEXT")
+            .arg("embedding").arg("VECTOR").arg("HNSW")
+                .arg("6")
+                .arg("TYPE").arg("FLOAT32")
+                .arg("DIM").arg("768")
+                .arg("DISTANCE_METRIC").arg("COSINE")
+        .query(&mut redis_conn);
+
+    match index_creation {
+        Ok(_) => info!("✨ [VECTOR DB] Vector Index 'kalkan_vector_idx' successfully created!"),
+        Err(e) => {
+            if e.to_string().contains("Index already exists") {
+                info!("ℹ️ [VECTOR DB] Vector Index already exists. Skipping creation.");
+            } else {
+                warn!("⚠️ [VECTOR DB] Index creation warning: {}", e);
+            }
+        }
+    }
+    // --- VEKTÖR İNDEKSİ İNŞAATI BİTİŞİ ---
     let redis_conn = redis::aio::ConnectionManager::new(redis_client).await?;
     info!("🟢 Redis Connection Established!");
 

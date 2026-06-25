@@ -33,3 +33,43 @@ pub async fn check_cache(
         }
     }
 }
+use reqwest::Client;
+use serde_json::json;
+
+// =====================================================================
+// 🎯 VEKTÖR TEDARİKÇİSİ (Ollama Embedding İstemcisi)
+// =====================================================================
+pub async fn get_embedding(prompt: &str) -> Result<Vec<f32>, Box<dyn std::error::Error + Send + Sync>> {
+    // Çevresel değişkenden URL'i alıyoruz (Docker içindeyken host.docker.internal olacak)
+    let embedding_url = std::env::var("EMBEDDING_URL")
+        .unwrap_or_else(|_| "http://localhost:11434/api/embeddings".to_string());
+    
+    let client = Client::new();
+    
+    // Ollama'nın vektör modeline (nomic-embed-text) veriyi hazırlıyoruz
+    let payload = json!({
+        "model": "nomic-embed-text",
+        "prompt": prompt
+    });
+
+    let response = client.post(&embedding_url)
+        .json(&payload)
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        return Err(format!("Ollama Embedding API Error: {}", response.status()).into());
+    }
+
+    let resp_json: serde_json::Value = response.json().await?;
+    
+    // Ollama'dan dönen JSON içindeki devasa Float dizisini (768 boyut), saf Rust f32 Vektörüne çeviriyoruz
+    let embedding = resp_json["embedding"]
+        .as_array()
+        .ok_or("No embedding array found in response")?
+        .iter()
+        .filter_map(|v| v.as_f64().map(|f| f as f32))
+        .collect::<Vec<f32>>();
+
+    Ok(embedding)
+}

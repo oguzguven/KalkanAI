@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
-  # 1. HAFIZA MERKEZİ: KalkanAI'nin Beyni (Redis)
+  # 1. VEKTÖREL HAFIZA MERKEZİ: KalkanAI'nin Gelişmiş Beyni (Redis Stack)
   redis-brain:
-    image: redis:7-alpine
+    image: redis/redis-stack-server:latest  # 🎯 GÜNCELLENDI: Standart Redis yerine Vektör Arama destekleyen Stack sürümü!
     container_name: kalkan-redis-brain
     ports:
       - "6379:6379"
+      - "8001:8001" # 📡 YENİ: Redis Insight arayüzü (Veritabanını görsel izlemek için)
     volumes:
       - kalkan_data:/data
-    command: redis-server --appendonly yes
     restart: unless-stopped
 
   # 2. ANA MOTOR: KalkanAI Gateway
@@ -20,13 +18,13 @@ services:
       - "8080:8080"
     environment:
       - RUST_LOG=info
-      # KalkanAI artık Redis'i localhost'ta değil, izole ağdaki 'redis-brain' adıyla arayacak!
       - REDIS_URL=redis://redis-brain:6379/
       - UPSTREAM_URL=http://host.docker.internal:11434/v1/chat/completions
+      # 🎯 YENİ: Ollama'nın vektör üretim bandının adresi
+      - EMBEDDING_URL=http://host.docker.internal:11434/api/embeddings
     depends_on:
       - redis-brain
     restart: unless-stopped
 
-# Verilerin kaybolmaması için kalıcı disk alanı
 volumes:
   kalkan_data:
